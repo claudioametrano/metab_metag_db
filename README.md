@@ -8,11 +8,12 @@ It deals with the secondary databases developed to barcode diversity using ampli
 - QIIME2
 - R
 - ...
-- 
+- FastQC
+- MultiQC
 ### Software required (locally)
 - a fasta file reader (MEGA, Aliview, Jalview, Bioedit ...)
 - Terminal (Win, Linux and Mac) to ssh into the HPC and (optionally) GUI file client (e.g. Filezilla)
-- ...
+
 
 ### BEFORE WE START
 Login to your account on the HPC and start an interactive session (as we won't run long analyses that require to submit a job to the cluster queue):
@@ -70,9 +71,6 @@ These databases have usually a very simple structure, they are made by one or tw
 - Reference sequences (usually in .fasta format)
 - A taxonomy file with the taxonomy associated to each of the representative sequences
 
-### Task 1
-
-
 ### Tools and pipelines commonly used in metabarcoding
 After about two decades of metabarcoding there are plenty of tools and pipelines which were developed to analyze metabarcoding data, many of them composed by the same fundamental steps, also often sharing methods and piece of software (e.g. QIIME using DADA2 denoising algorithm)
 
@@ -86,15 +84,71 @@ After about two decades of metabarcoding there are plenty of tools and pipelines
 | **MetaWorks**       | Snakemake workflow (Python/R)                | Multi-locus (ITS, COI) with VSEARCH + tax-assign                           | [GitHub](https://github.com/terrimporter/MetaWorks?utm_source=chatgpt.com "MetaWorks: A Multi-Marker Metabarcode Pipeline - GitHub") |
 | **mBRAVE**          | Web cloud platform                           | OTU/ASV assignment against curated BOLD                                    | [mbrave.net](https://www.mbrave.net/?utm_source=chatgpt.com "mBRAVE - Metabarcoding at Scale")                                       |
 
-### 2- A typical metabarcoding data analysis workflow
-
+### A typical metabarcoding experiment workflow
 ![metabarcoding](/images/metabarcoding_workflow.jpg)
 modif. from [Pawlowsky et al. 2018](https://www.sciencedirect.com/science/article/pii/S0048969718316322)
 
+#### 1- Experimental design:
+- Question to answer using amplicon sequencing data
+- Actual design: How many samples/replicates? How many markers/which organims target? How many libraries? What expected sequencing depth? How large is the budget?
+- Metadata: by direct measurments? from public databases (especially for environmental dataset)? 
 
+#### 2- Molecular biology laboratory procedures
 ![wetlab](/images/wetlab.png)
 
-We are not going to produce our own data this time, we will instead relay on 
+#### 3- Data analysis
+This is an overview from [QIIME2](https://amplicon-docs.qiime2.org/en/latest/explanations/conceptual-overview.html) website, but most of these steps are similar no matte what pipeline you select!
+![qiime](/images/qiime_flow.png)
+We are not going to produce our own data this time, we will instead start from metabarcoding data produced for this project: [Meilander et al. 2024](https://arxiv.org/abs/2411.04148), which is also the most recent QIIME2 tutorial dataset. 
+
+
+### ... Let's begin 
+![miramare](/images/miramare.png)
+The dataset is a toy version of an actual experiment conducted to assess the bio-compatibility of Biochar fortified concrete for marine use.
+We are going to use one of the library produced made to assess prokaryotic diversity.
+
+
+### Needed files:
+- Sequences (fastq) ->  ./data/raw_fatsq
+- Metadata -> ./data/metadada.tsv 
+  let's take a look at them to understad the experimental design
+- Reference database -> [SILVA](https://www.arb-silva.de)
+
+ Let's download SILVA 99% similarity clustered version 
+```bash 
+cd data
+
+wget https://www.arb-silva.de/fileadmin/silva_databases/current/ARB_files/SILVA_138.2_SSURef_NR99_03_07_24_opt.arb.gz
+
+cd ..
+```
+
+#### **TASK 1**
+> - Check on of the fastq file without decompressing them (It would be not convenient, as the software we use can deal with compressed archives)
+> - Count the number of sequences per fastq file
+> - Which kind of reads are these? (type, possible instrument, reads length)
+>(hint: use zgrep)
+>
+
+### Raw reads quality benchmark
+Command line is great (he said) but user, interactive .html report are generate by software such as [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
+```bash 
+$ fastqc /data/*.gz -threads 4 -o /results
+```
+
+Possible contaminant adapters removal and universal PCR primer removal
+https://www.melbournebioinformatics.org.au/tutorials/tutorials/qiime2/qiime2/
+https://github.com/otagoedna/edna_workshop_june2021/tree/master/docs
+https://www.slideshare.net/evelienjongepier1/metabarcoding-qiime2-workshop-denoise-249464789#8
+https://telatin.github.io/microbiome-bioinformatics/Metabarcoding-1/
+https://amplicon-docs.qiime2.org/en/latest/tutorials/gut-to-soil.html
+https://use.qiime2.org/en/latest/how-to-guides/merge-metadata.html
+https://amplicon-docs.qiime2.org/en/latest/explanations/conceptual-overview.html
+https://amplicon-docs.qiime2.org/en/latest/tutorials/gut-to-soil.html
+
+
+
+
 
 
 
