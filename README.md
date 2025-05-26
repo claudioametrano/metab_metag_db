@@ -104,17 +104,17 @@ We are not going to produce our own data this time, we will instead start from m
 
 ### ... Let's begin 
 ![miramare](/images/miramare.png)
-The dataset is a toy version of an actual experiment conducted to assess the bio-compatibility of Biochar fortified concrete for marine use.
-We are going to use one of the library produced made to assess prokaryotic diversity.
+The dataset is a toy version of an actual experiment.
+We are going to use one of the library produced made to assess prokaryotic diversity in coastal environment.
 
 
 ### Needed files:
 - Sequences (fastq) ->  ./data/raw_fatsq
 - Metadata -> ./data/metadada.tsv 
-  let's take a look at them to understad the experimental design
+  let's take a look at them to understad the **experimental design**
 - Reference database -> [SILVA](https://www.arb-silva.de)
 
- Let's download SILVA 99% similarity clustered version 
+ Let's download the last version of SILVA 99% similarity clustered version 
 ```bash 
 cd data
 
@@ -126,15 +126,31 @@ cd ..
 #### **TASK 1**
 > - Check on of the fastq file without decompressing them (It would be not convenient, as the software we use can deal with compressed archives)
 > - Count the number of sequences per fastq file
-> - Which kind of reads are these? (type, possible instrument, reads length)
+> - Which kind of reads are these? (type, instrument, reads length)
 >(hint: use zgrep)
 >
 
+#### **TASK2**
+> Does your sequence contains residual Illumina adapters and marker's primers?
+> How important is this to know?
+> How would you quickly screen for this?
+
+Primer for 16S rRNA (V3-V4 region) 
+Forward: Pro341F (5’-CCTACGGGNBGCASCAG-3’)
+Reverse: Pro805R (5’-GACTACNVGGGTATCTAATCC-3’)]
+Do you notice anything unusual?
+[IUPAC nucleotide code](https://pmc.ncbi.nlm.nih.gov/articles/PMC2865858/)
+
 ### Raw reads quality benchmark
-Command line is great (he said) but user, interactive .html report are generate by software such as [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
+Command line is great (he said), quick and versatile, but user friendly, interactive .html quality report are generate by software such as [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
 ```bash 
-$ fastqc /data/*.gz -threads 4 -o /results
+$ fastqc /data/raw_fastq/*.gz -threads 4 -o /results
 ```
+
+
+
+>
+
 
 Possible contaminant adapters removal and universal PCR primer removal
 https://www.melbournebioinformatics.org.au/tutorials/tutorials/qiime2/qiime2/
