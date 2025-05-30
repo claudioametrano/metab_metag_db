@@ -5,14 +5,13 @@ It deals with the secondary databases developed to barcode diversity using ampli
 
 
 ### Software required (on HPC)
-- QIIME2
-- R
+- QIIME2 (container)
 - ...
 - FastQC
 - MultiQC
 ### Software required (locally)
 - a fasta file reader (MEGA, Aliview, Jalview, Bioedit ...)
-- Terminal (Win, Linux and Mac) to ssh into the HPC and (optionally) GUI file client (e.g. Filezilla)
+- Terminal (Win, Linux and Mac) to ssh into the HPC and a client (e.g. Filezilla) for easy file transfer
 
 
 ### BEFORE WE START
@@ -20,7 +19,7 @@ Login to your account on the HPC and start an interactive session (as we won't r
 ```bash
 ssh username@l2.gsc1.uni-graz.at
 
-srun --mem=8G --ntasks=4 --cpus-per-task=1 --time=10:00:00 --pty bash
+srun --mem=32G --ntasks=8 --cpus-per-task=1 --time=10:00:00 --pty bash
 ```
 
 download this repository:
@@ -28,23 +27,35 @@ download this repository:
 git clone https://github.com/claudioametrano/name-of-the-repository.git
 ```
 
-Rename the folder containing the results, so you won't overwrite it running the analyses of this tutorial, and it will be available if needed:
+Rename the folder containing the results, so you won't overwrite it running the analyses of this tutorial, and create a new results folder
 ```bash
 mv results results_backup  
+mkdir results
 ```
 
-We will work on the HPC cluster (High Performace Computing) using Docker containers which have the specific software we need, then every command will need this before the actual command that launch that analysis
+We will work on the HPC cluster (High Performace Computing) using Docker containers which have the specific software we need.
+- obtain the qiime2 container and create the .sif file Singularity uses
+- Start an interactive session in the container (you can also lauch a single command and close it, for command long to run)
 ```bash
-docker run --rm -u $(id -u):$(id -g) -v $(pwd):/in -w /in path/to/the/container/name-of-the-container command-to-launch
+singularity pull docker://quay.io/qiime2/amplicon:2024.10
+
+singularity shell --bind "$(pwd)":/in --home "$(pwd)":/home/qiime2 amplicon_2024.10.sif
+
 ```
-**docker run** ->	Starts a new Docker container.
-**--rm** ->	Automatically removes the container once it finishes running. 
-**-u \$(id -u):$(id -g)** ->	Runs the container as the current user (user ID and group ID), so the output files are not owned by root.
-**-v $(pwd):/in** ->	Mounts the current directory (pwd) from your host into the container at /in. This makes your local files accessible to the container.
-**-w /in** ->	Sets the working directory inside the container to /in (which maps to your current directory).
+`qiime` tries to create a small cache under **$HOME** (`/home/qiime2/q2cli`).  
+Inside a Singularity image the root filesystem is read-only, so we need to mount the qiime home folder
 
-It is also possible to install software via Conda, in this case command of this tutorial can be launched as they are written, but you will need to install Anaconda/Miniconda and the following software:
+It is also possible to install software QiiME2 via Conda, in a dedicated conda environment, via a .yml recipe from QIIME website
+```bash
+conda env create -n qiime2 --file https://data.qiime2.org/distro/amplicon/qiime2-amplicon-2024.10-py310-linux-conda.yml
+```
 
+Also containers fro FastQC and MultiQC
+```bash
+singularity shell --bind "$(pwd)":/in  https://depot.galaxyproject.org/singularity/fastqc:0.12.1--hdfd78af_0
+
+singularity shell --bind "$(pwd)":/in https://depot.galaxyproject.org/singularity/multiqc:1.26--pyhdfd78af_0
+```
 
 ### 1- Nucleotide reference databases for metabarcoding and diversity assessment (an example of secondary database)
 
@@ -97,15 +108,15 @@ modif. from [Pawlowsky et al. 2018](https://www.sciencedirect.com/science/articl
 ![wetlab](/images/wetlab.png)
 
 #### 3- Data analysis
-This is an overview from [QIIME2](https://amplicon-docs.qiime2.org/en/latest/explanations/conceptual-overview.html) website, but most of these steps are similar no matter what pipeline you select to carry out your analyses
+This is an overview from [QIIME2](https://amplicon-docs.qiime2.org/en/latest/explanations/conceptual-overview.html) website, but most of these steps are similar no matte what pipeline you select!
 ![qiime](/images/qiime_flow.png)
-We are not going to produce our own data this time (it takes quite a bit... and a molecular biology lab), we will instead start from metabarcoding data produced for a recent progect.
+We are not going to produce our own data this time, we will instead start from metabarcoding data produced for this project: [Meilander et al. 2024](https://arxiv.org/abs/2411.04148), which is also the most recent QIIME2 tutorial dataset. 
 
 
 ### ... Let's begin 
 ![miramare](/images/miramare.png)
-The dataset is a toy version (down-sampled to 10%) of an actual experiment.
-We are going to use one of the library produced to assess prokaryotic diversity in a coastal subtidal environment.
+The dataset is a toy version of an actual experiment.
+We are going to use one of the library produced made to assess prokaryotic diversity in coastal environment.
 
 
 ### Needed files:
@@ -124,15 +135,15 @@ cd ..
 ```
 
 #### **TASK 1**
-> - Check the fastq file without decompressing them (It would be not convenient, as the software we use can deal with compressed archives)
+> - Check on of the fastq file without decompressing them (It would be not convenient, as the software we use can deal with compressed archives)
 > - Count the number of sequences per fastq file
-> - Which kind of reads are these? (single/paired, reads length)
->(hint: use zgrep with one of the method you may know to count reads in a fastq file)
+> - Which kind of reads are these? (type, instrument, reads length)
+>(hint: use zgrep)
 >
 
 #### **TASK2**
 > Does your sequence contains residual Illumina adapters and marker's primers?
-> How important is this to know? How would this impact subsequent analyses?
+> How important is this to know?
 > How would you quickly screen for this?
 
 Primer for 16S rRNA (V3-V4 region) 
@@ -141,16 +152,18 @@ Reverse: Pro805R (5’-GACTACNVGGGTATCTAATCC-3’)]
 Do you notice anything unusual?
 [IUPAC nucleotide code](https://pmc.ncbi.nlm.nih.gov/articles/PMC2865858/)
 
-### Raw reads quality benchmark (before trimming)
-Command line is great (he said), quick and versatile, but also user friendly, interactive .html quality report mice, such as those generated by software like [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
+### Raw reads quality benchmark
+Command line is great (he said), quick and versatile, but user friendly, interactive .html quality report are generate by software such as [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
 ```bash 
 $ fastqc /data/raw_fastq/*.gz -threads 4 -o /results
 ```
 
 
 
-Possible contaminant adapters removal and universal PCR primer removal
+>
 
+
+Possible contaminant adapters removal and universal PCR primer removal
 https://www.melbournebioinformatics.org.au/tutorials/tutorials/qiime2/qiime2/
 https://github.com/otagoedna/edna_workshop_june2021/tree/master/docs
 https://www.slideshare.net/evelienjongepier1/metabarcoding-qiime2-workshop-denoise-249464789#8
