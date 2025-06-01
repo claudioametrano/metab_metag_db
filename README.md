@@ -15,16 +15,16 @@ It deals with the secondary databases developed to barcode diversity using ampli
 
 
 ### BEFORE WE START
-Login to your account on the HPC and start an interactive session (as we won't run long analyses that require to submit a job to the cluster queue):
+Login to your account on the HPC and start an interactive session (as we won't run long, computationally heavy analyses that require to submit a job to the cluster queue):
 ```bash
 ssh username@l2.gsc1.uni-graz.at
 
 srun --mem=32G --ntasks=8 --cpus-per-task=1 --time=10:00:00 --pty bash
 ```
 
-download this repository:
+Download this repository:
 ```bash
-git clone https://github.com/claudioametrano/name-of-the-repository.git
+git clone https://github.com/claudioametrano/metab_metag_db.git
 ```
 
 Rename the folder containing the results, so you won't overwrite it running the analyses of this tutorial, and create a new results folder
@@ -33,29 +33,24 @@ mv results results_backup
 mkdir results
 ```
 
-We will work on the HPC cluster (High Performace Computing) using Docker containers which have the specific software we need.
-- obtain the qiime2 container and create the .sif file Singularity uses
-- Start an interactive session in the container (you can also lauch a single command and close it, for command long to run)
+We then need to:
+- Bbtain the qiime2 container and create the .sif file Singularity uses
+- Start an interactive session in the container (you can also launch a single command  with `singularity run`) and check if QIIME2 is in there, 
 ```bash
 singularity pull docker://quay.io/qiime2/amplicon:2024.10
 
 singularity shell --bind "$(pwd)":/in --home "$(pwd)":/home/qiime2 amplicon_2024.10.sif
 
+qiime --help
 ```
-`qiime` tries to create a small cache under **$HOME** (`/home/qiime2/q2cli`).  
-Inside a Singularity image the root filesystem is read-only, so we need to mount the qiime home folder
+`qiime` tries to create a small cache under **$HOME** (`/home/qiime2/`).  
+Inside a Singularity image the root filesystem is read-only, so we need to mount also the qiime home folder.
 
 It is also possible to install software QiiME2 via Conda, in a dedicated conda environment, via a .yml recipe from QIIME website
 ```bash
 conda env create -n qiime2 --file https://data.qiime2.org/distro/amplicon/qiime2-amplicon-2024.10-py310-linux-conda.yml
 ```
 
-Also containers fro FastQC and MultiQC
-```bash
-singularity shell --bind "$(pwd)":/in  https://depot.galaxyproject.org/singularity/fastqc:0.12.1--hdfd78af_0
-
-singularity shell --bind "$(pwd)":/in https://depot.galaxyproject.org/singularity/multiqc:1.26--pyhdfd78af_0
-```
 
 ### 1- Nucleotide reference databases for metabarcoding and diversity assessment (an example of secondary database)
 
@@ -77,7 +72,7 @@ Since the introduction of the second-generation sequencing technologies in the m
 | **ITS**                           | plants                           | **PLANiTS**                        | https://academic.oup.com/database/article/doi/10.1093/database/baz155/5722079 |
 | **18S rRNA, full rDNA**           | Eukaryotes                       | **PR2**                            | [pr2](https://pr2-database.org/)                                              |
 | **16S/18S, 23S/28S rRNA**         | Bacteria, Archaea and Eukarya    | **SILVA**                          | [silva](https://www.arb-silva.de/)                                            |
-| **16S rRNA**                      |                                  | **Greengenes**                     | https://www.nature.com/articles/s41587-023-01845-1                            |
+| **16S rRNA**                      | Bacteria, Archaea                | **Greengenes**                     | https://www.nature.com/articles/s41587-023-01845-1                            |
 These databases have usually a very simple structure, they are made by one or two files, containing:
 - Reference sequences (usually in .fasta format)
 - A taxonomy file with the taxonomy associated to each of the representative sequences
@@ -105,23 +100,23 @@ modif. from [Pawlowsky et al. 2018](https://www.sciencedirect.com/science/articl
 - Metadata: by direct measurments? from public databases (especially for environmental dataset)? 
 
 #### 2- Molecular biology laboratory procedures
-![wetlab](/images/wetlab.png)
-
+![wetlab](/images/illumina.pdf)
+from [Illumina](https://www.illumina.com/)
 #### 3- Data analysis
-This is an overview from [QIIME2](https://amplicon-docs.qiime2.org/en/latest/explanations/conceptual-overview.html) website, but most of these steps are similar no matte what pipeline you select!
+This is an overview from [QIIME2](https://amplicon-docs.qiime2.org/en/latest/explanations/conceptual-overview.html) website, but most of these steps are similar no matter what pipeline you select
 ![qiime](/images/qiime_flow.png)
-We are not going to produce our own data this time, we will instead start from metabarcoding data produced for this project: [Meilander et al. 2024](https://arxiv.org/abs/2411.04148), which is also the most recent QIIME2 tutorial dataset. 
-
+We are not going to produce our own data this time, we will instead start from metabarcoding data produced for a small marine project.
 
 ### ... Let's begin 
 ![miramare](/images/miramare.png)
 The dataset is a toy version of an actual experiment.
-We are going to use one of the library produced made to assess prokaryotic diversity in coastal environment.
+We are going to use one of the library (16S rDNA) produced made to assess prokaryotic diversity in a coastal environment.
 
-
+![16S](/images/16S_rDNA.png)
+from [Fukuda et al. 2016](https://www.researchgate.net/publication/308040658_Molecular_Approaches_to_Studying_Microbial_Communities_Targeting_the_16S_Ribosomal_RNA_Gene)
 ### Needed files:
-- Sequences (fastq) ->  ./data/raw_fatsq
-- Metadata -> ./data/metadada.tsv 
+- Sequences (fastq) ->  ./data/raw_fatsq/16S_biochar_run2_10perc_sampled
+- Metadata -> ./data/metadada.csv 
   let's take a look at them to understad the **experimental design**
 - Reference database -> [SILVA](https://www.arb-silva.de)
 
@@ -137,30 +132,107 @@ cd ..
 #### **TASK 1**
 > - Check on of the fastq file without decompressing them (It would be not convenient, as the software we use can deal with compressed archives)
 > - Count the number of sequences per fastq file
-> - Which kind of reads are these? (type, instrument, reads length)
->(hint: use zgrep)
+> - Which kind of reads are these? (type, reads length)
+>    (hint: use zless or zcat, zgrep and awk with length)
 >
 
-#### **TASK2**
-> Does your sequence contains residual Illumina adapters and marker's primers?
-> How important is this to know?
-> How would you quickly screen for this?
-
-Primer for 16S rRNA (V3-V4 region) 
-Forward: Pro341F (5’-CCTACGGGNBGCASCAG-3’)
-Reverse: Pro805R (5’-GACTACNVGGGTATCTAATCC-3’)]
-Do you notice anything unusual?
-[IUPAC nucleotide code](https://pmc.ncbi.nlm.nih.gov/articles/PMC2865858/)
-
 ### Raw reads quality benchmark
-Command line is great (he said), quick and versatile, but user friendly, interactive .html quality report are generate by software such as [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
-```bash 
-$ fastqc /data/raw_fastq/*.gz -threads 4 -o /results
+Command line is great (he said), quick and versatile, but user friendly, interactive .html quality report are generated by software such as [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://github.com/MultiQC/MultiQC)
+
+We will run them via existing containers: 
+FastQC to benchmark each sample
+```bash
+singularity shell --bind "$(pwd)":/in  https://depot.galaxyproject.org/singularity/fastqc:0.12.1--hdfd78af_0
+
+mkdir /in/results/fastqc_raw_out
+
+fastqc /in/data/16S_biochar_run2_10perc_sampled/*.gz -o /in/results/fastqc_raw_out --threads 8 --nogroup
+
+exit
+```
+
+MultiQC to aggregate results and highlight possible outlier
+```bash
+singularity shell --bind "$(pwd)":/in https://depot.galaxyproject.org/singularity/multiqc:1.26--pyhdfd78af_0
+
+multiqc --verbose /in/results/fastqc_raw_out/ -o /in/results/multiqc_raw_out
+
+exit
+```
+#### **TASK2**
+> Now check the .html output of R1 and R2 fastq file from the some samples (download it from server by Filezilla and open them locally) and the aggregated report of MultuQC and try to answer the following questions:
+> 1- Which of the warnings thrown by fasQC are of actual concern, and which are not? Why?
+> 2- Do you notice any difference in term of quality between corresponding R1 and R2 files?
+> 3- Does any sample show peculiar characteristics in term of quality, nucleotide composition, etc?
+> 4- If any, what are the over-represented sequences? Are they of concern for subsequent analyses?
+> 5- Does your sequence contains residual Illumina adapters/sequincing primers and marker's primers?
+> 6- Could you explain why polyG sequences are common? Do they have biological meaning? (hint: look at bottom-right corner of /images/illumina.pdf)
+
+![[P5_to_P7.png]]
+from [here](https://teichlab.github.io/scg_lib_structs/methods_html/Illumina.html)
+### **TASK3** 
+>FastQC do not search for your custom primer (well, not by default) so now it is your turn to do so:
+>Primer for 16S rRNA (V3-V4 region) 
+>Forward: Pro341F (5’-CCTACGGGNBGCASCAG-3’)
+>Reverse: Pro805R (5’-GACTACNVGGGTATCTAATCC-3’)]
+>Do you notice anything unusual?
+>[IUPAC nucleotide code](https://pmc.ncbi.nlm.nih.gov/articles/PMC2865858/)
+>
+> **Questions:**
+> - Do all sequence have primers? Where in the sequence?
+> - Is there any sequence that do not match your search? if so, why?
+> (hint: use zgrep with regular expression (-E) and the regex e.g. "\[A | T]" when more than one character is possible, see grep --help. Note that "|" has here a different meaning in regex than it has as a pipe, here it means OR)
+
+
+### Quality trimming, adapter and universal primer removal
+Many software are available (fastp, Trimmomatic, cutadapt etc.) with various option and approaches to trimming, removing adapters and/or primers, even though these reads are of really have quality and denoising algoritm work usually well with raw reads, there is a little room for improvement (let's check after the trimming if it is worth it)
+
+Fastp is one of the most versatile tool to pre-process short reads
+# fastp dont support degenerate base, iether use another tool or ctadapt + fastp or simply cut the first x bases with DADA2 in denoising step
+```bash
+singularity shell --bind "$(pwd)":/in https://depot.galaxyproject.org/singularity/fastp:0.24.0--heae3180_1
+
+mkdir /in/results/trimmed_fastq
+
+
+
+IN_DIR="/in/data/16S_biochar_run2_10perc_sampled"
+OUT_DIR="/in/results/trimmed_fastq"
+for r1 in "$IN_DIR"/*_R1_001.fastq_10perc.fastq.gz; do
+    # derive sample prefix by stripping the suffix
+    sample=${r1%_R1_001.fastq_10perc.fastq.gz}
+    r2=${sample}_R1_001.fastq_10perc.fastq.gz
+    
+    echo "▶ Trimming sample: $sample"
+
+    fastp \
+        -i  "$r1"  -I  "$r2" \
+        -o  "$OUT_DIR/${sample}_R1.trimmed.fastq.gz" \
+        -O  "$OUT_DIR/${sample}_R2.trimmed.fastq.gz" \
+        --adapter_fasta=CCTACGGGNBGCASCAG \
+        --adapter_sequence_r2=GACTACNVGGGTATCTAATCC \
+        --detect_adapter_for_pe           \
+        --trim_poly_g                      \
+        --trim_poly_x                      \
+        --cut_front --cut_tail             \
+        --cut_window_size     4            \
+        --cut_mean_quality    20           \
+        --qualified_quality_phred 15       \
+        --length_required  100     \
+        --thread              8   \
+        --html  "$OUT_DIR/${sample}.html" \
+
+    echo "✓ Done with $sample"
+done
+  
 ```
 
 
 
->
+
+### Trimmed reads quality 
+Run again fastQC and MultiQC (in a different output folder!!) and check what happened.
+
 
 
 Possible contaminant adapters removal and universal PCR primer removal
